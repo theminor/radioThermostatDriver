@@ -76,5 +76,6 @@ myDriver.prototype.config = function(rpc,cb) {
   }
 };
 
-
 // Export it
+module.exports = myDriver;
+
