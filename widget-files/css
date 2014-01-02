@@ -1,0 +1,44 @@
+background: white;
+.currentTempValue {
+  font-size: 20px;
+  text-align: center;
+  color: black;
+  padding-top:50px;
+}
+.setTempValue {
+  font-size: 20px;
+  text-align: center;
+  color: red;
+  padding-top: 5px;
+}
+.opMode {
+  font-size: 20px;
+  text-align: center;
+  color: blue;
+  padding-top: 5px;
+}
+.fanMode {
+  font-size: 20px;
+  text-align: center;
+  color: gray;
+  padding-top: 5px;
+}
+.thermTime {
+  font-size: 14px;
+  text-align: center;
+  color: black;
+  padding-top: 5px;
+}
+.prgData {
+  font-size: 8px;
+  text-align: center;
+  color: black;
+  padding-top: 5px;
+}
+.tempBtnFrm{
+  padding-top: 5px;
+}
+.setTempInput {
+}
+.setTempBtn {
+}
