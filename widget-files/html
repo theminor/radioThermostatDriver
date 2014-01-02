@@ -1,0 +1,10 @@
+<div class='currentTempValue'></div>
+<div class='setTempValue'></div>
+<div class='opMode'></div>
+<div class='fanMode'></div>
+<div class='thermTime'></div>
+<div class='prgData'></div>
+<form class='tempBtnFrm' id='tempBtnFrmID'>
+  <input class='setTempInput' id='setTempInputID' type="text" name="setTempName" title="titleTMP" />
+  <button class='setTempBtn'>Set Temp</button>
+</form>
