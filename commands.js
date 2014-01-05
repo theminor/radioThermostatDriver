@@ -9,7 +9,7 @@ module.exports = [
     },
     {
         name: 'Thermostat Target Temperature',
-        deviceId: 9,
+        deviceId: 31,
         data: [function(thermostatData) {
 			var tTemp = thermostatData.t_cool;
 			if (!tTemp) tTemp = thermostatData.t_heat;
