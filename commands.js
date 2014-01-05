@@ -37,12 +37,12 @@ module.exports = [
         name: 'Thermostat Fan Operating Mode',		// show current thermostat fan operating mode ("fmode") - will be one of: 0: AUTO, 1: AUTO/CIRCULATE, 2: ON
         deviceId: 244,
         data: [function(thermostatData) {
-			var fanOpModes = ["Thermostat Fan Auto Mode","Thermostat Fan Auto/Circulate Mode","Thermostat Fan Mode On"];
-			return fanOpModes[thermostatData.fmode] || "Thermostat Fan Mode Unknown";
+			var fanOpModes = ["Thermostat Fan Auto Mode","Thermostat Fan Auto/Circ","Thermostat Fan Mode On"];
+			return fanOpModes[thermostatData.fmode] || "Thermostat Fan Unknown";
         }],
 		canSet: true,
 		setStg: [function(ipAddr, mode) { // example:   curl -d '{"tmode":1}' http://1.1.1.1/tstat  (turns to heat mode)
-			var modNum = {"Thermostat Fan Auto Mode":0,"Thermostat Fan Auto/Circulate Mode":1,"Thermostat Fan Mode On":2};
+			var modNum = {"Thermostat Fan Auto Mode":0,"Thermostat Fan Auto/Circ":1,"Thermostat Fan Mode On":2};
 			if (modNum[mode]) return "curl -d '{\"tmode\":" + modNum[mode] + "}' http://" + ipAddr + "/tstat"; else return "";
         }],
     },	

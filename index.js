@@ -11,8 +11,8 @@ util.inherits(Device,stream);
 var deviceList = [];
 
 // my variables (***TODO: incorporate these into configuration)
-var updateInterval = 30000; // update interval in milliseconds (for example, 600000 = 10 minutes)
-var pauseAfterSetToUpdate = 10000; // time in milliseconds to wait after submitting/setting data before we try to run an update
+var updateInterval = 300000; // update interval in milliseconds (for example, 600000 = 10 minutes)
+var pauseAfterSetToUpdate = 7000; // time in milliseconds to wait after submitting/setting data before we try to run an update
 var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests
 var ipAddressOfThermostat = "192.168.1.135"; // ip address of the thermostat
 var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
@@ -21,9 +21,14 @@ function Driver(opts,app) {
 	this._app = app;
 	app.once('client::up',function(){
 		commands.forEach( this.createCommandDevice.bind(this) );
-		process.nextTick( function() { 	app.log.info("UPDATE"); updateDevices(app) }, updateInterval); // Once all devices are set up, establish a single update process that updates every "updateInterval" seconds
+		updateDevices(app);
+		process.nextTick(function() {	// Once all devices are set up, establish a single update process that updates every "updateInterval" seconds
+			setInterval(function() {
+				updateDevices(app);
+			}, updateInterval);
+		});
 	}.bind(this));
-}
+};
 
 Driver.prototype.createCommandDevice = function(cmd) {
 	var d = new Device(this._app, cmd);
