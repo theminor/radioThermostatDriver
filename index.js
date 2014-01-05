@@ -2,7 +2,7 @@ var util = require('util');
 var stream = require('stream');
 var exec = require('child_process').exec;
 var commands = require('./commands');
-// var configHandlers = require('./config-handlers');
+var configHandlers = require('./config-handlers');
 
 util.inherits(Driver,stream);
 util.inherits(Device,stream);
@@ -19,12 +19,13 @@ var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
 
 function Driver(opts,app) {
 	this._app = app;
+	this.opts = opts;
 	app.once('client::up',function(){
 		commands.forEach( this.createCommandDevice.bind(this) );
-		updateDevices(app);
+		updateDevices(app, opts);
 		process.nextTick(function() {	// Once all devices are set up, establish a single update process that updates every "updateInterval" seconds
 			setInterval(function() {
-				updateDevices(app);
+				updateDevices(app, opts);
 			}, updateInterval);
 		});
 	}.bind(this));
@@ -51,8 +52,11 @@ function Device(app, config) {
 	// this.read();
 };
 
-function updateDevices(app) {	// runs every "updateInterval" seconds
+function updateDevices(app, opts) {	// runs every "updateInterval" seconds
 	app.log.info("Updating radioThermostatDriver Devices...");
+
+	app.log.info(opts.ipadr); //***
+	
 	app.log.info("radioThermostatDriver executing command: " + tstatCmd);
 	exec(tstatCmd, function(error, stdout, stderr) {
 		app.log.info("Result of radioThermostatDriver command: " + stdout);
@@ -98,6 +102,7 @@ function updateDevices(app) {	// runs every "updateInterval" seconds
 
 Device.prototype.write = function(dataRcvd) {
 	var app = this._app;
+	var opts = this.opts;
 	app.log.info("radioThermostatDriver Device " + this.name + " received data: " + dataRcvd);
 	app.log.info("radioThermostatDriver Device canSet: " + this.config.canSet);
 	if (this.config.canSet) {
@@ -116,7 +121,7 @@ Device.prototype.write = function(dataRcvd) {
 			var rslt = exec(stgSubmit, function (error, stdout, stderr) {
 				stdout.replace(/(\n|\r|\r\n)$/, '');
 				app.log.info(this.name + " - Result: " + stdout);
-				setTimeout( function() { updateDevices(app) }, pauseAfterSetToUpdate);
+				setTimeout( function() { updateDevices(app, opts) }, pauseAfterSetToUpdate);
 			});
 		}
 		else {
@@ -126,7 +131,85 @@ Device.prototype.write = function(dataRcvd) {
 	else {
 		app.log.info("radioThermostatDriver Device " + this.name + " received data, but this type of device can't update");
 	}
-}
+};
+
+Driver.prototype.config = function(rpc,cb) {
+	var self = this;
+	if (!rpc) {
+		this._app.log.info("radioThermostatDriver main config window called");
+		return cb(null, {	// main config window
+			"contents":[
+				{ "type": "paragraph", "text": "The radioThermostatDriver allows you to monitor and control WiFi Thermostats such as the ones from radiothermostat.com. Enter the settings below to get started, and please make sure you get a confirmation message after hitting 'Submit' below. (You may have to click it a couple of times. If you don't get a confirmation message, the settings did not update!)"},
+				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": "", "label": "IP Address of Your Thermostat", "placeholder": "192.168.1.135", "required": true},
+				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": "", "label": "Update Interval in Seconds", "placeholder": "600", "required": true},
+				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": "", "label": "Seconds to Pause Between Thermostat Commands", "placeholder": "5", "required": true},
+				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": "10", "required": true},
+				{ "type": "paragraph", "text": " "},
+				{ "type": "submit", "name": "Submit", "rpc_method": "submt" },
+				{ "type": "close", "name": "Cancel" },
+			]
+		});
+	};
+	if (rpc.method == "submt") {
+		this._app.log.info("radioThermostatDriver config window submitted. Checking data for errors...");
+		// check for errors
+		var rgx = new RegExp("^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"); // Test ip_addr_text to match this regex - simple ip address checking does not check nodes for > 255, but should suffice for now...
+		if (!rgx.test(rpc.params.ip_addr_text)) {
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": "IP address was invalid - please use standard ipv4 address, such as: 123.45.6.789. Please try again." },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});			
+			return;
+		}
+		else if (!(rpc.params.update_int_secs_text >= 0)) {	// update_int_secs_text must evaluate to a positive number 
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": "the 'update interval' must be a number and can't be negative. Please try again." },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});			
+			return;			
+		}
+		else if (!(rpc.params.pause_bt_cmds_secs_text >= 0)) {	// pause_bt_cmds_secs_text must evaluate to a positive number 
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": "The 'pause between commands' interval must be a number and can't be negative. Please try again." },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});			
+			return;				
+		}	
+		else if (!(rpc.params.pause_aft_updt_secs_text >= 0)) {	// pause_aft_updt_secs_text must evaluate to a positive number 
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": "The 'pause after update' interval must be a number and can't be negative. Please try again." },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});			
+			return;				
+		}
+		else {	// looks like the submitted values were valid, so update
+			this._app.log.info("radioThermostatDriver data appears valid. Saving settings...");
+            self.opts.ipadr = rpc.params.ip_addr_text;
+            self.opts.updtInt = rpc.params.update_int_secs_text * 1000; // need this in milliseconds
+			self.opts.pauseBtCmds = rpc.params.pause_bt_cmds_secs_text; // this optin isn't used right now...
+			self.opts.pauseAftUpdt = rpc.params.pause_aft_updt_secs_text * 1000; // also need this in milliseconds
+			self.save();
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": "Configuration was successful. (TODO: actually update!) radioThermostatDriver values should update shortly!" },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});
+			updateDevices(this._app, self.opts);
+		};
+	}
+	else {
+		this._app.log.info("radioThermostatDriver - Unknown rpc method was called!");
+	};
+};
 
 module.exports = Driver;
 
