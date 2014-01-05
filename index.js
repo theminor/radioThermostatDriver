@@ -1,137 +1,127 @@
-var Device = require('./lib/device')
-  , util = require('util')
-  , stream = require('stream');
+var util = require('util');
+var stream = require('stream');
+var exec = require('child_process').exec;
+var commands = require('./commands');
+// var configHandlers = require('./config-handlers');
 
-// Give our module a stream interface
-util.inherits(myModule,stream);
+util.inherits(Driver,stream);
+util.inherits(Device,stream);
 
-/**
- * Called when our client starts up
- * @constructor
- *
- * @param  {Object} opts Saved/default module configuration
- * @param  {Object} app  The app event emitter
- * @param  {String} app.id The client serial number
- *
- * @property  {Function} save When called will save the contents of `opts`
- * @property  {Function} config Will be called when config data is received from the cloud
- *
- * @fires register - Emit this when you wish to register a device (see Device)
- * @fires config - Emit this when you wish to send config data back to the cloud
- */
-function myModule(opts,app) {
+// not so elegant way to store all of the devices created by the driver...
+var deviceList = [];
 
-  var self = this;
+// my variables (***TODO: incorporate these into configuration)
+var updateInterval = 30000; // update interval in milliseconds (for example, 600000 = 10 minutes)
+var pauseAfterSetToUpdate = 10000; // time in milliseconds to wait after submitting/setting data before we try to run an update
+var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests
+var ipAddressOfThermostat = "192.168.1.135"; // ip address of the thermostat
+var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
 
-  app.on('client::up',function(){
+function Driver(opts,app) {
+	this._app = app;
+	app.once('client::up',function(){
+		commands.forEach( this.createCommandDevice.bind(this) );
+		process.nextTick( function() { 	app.log.info("UPDATE"); updateDevices(app) }, updateInterval); // Once all devices are set up, establish a single update process that updates every "updateInterval" seconds
+	}.bind(this));
+}
 
-    // The client is now connected to the cloud
-
-    // Do stuff with opts, and then commit it to disk
-    if (!opts.hasMutated) {
-      opts.hasMutated = true;
-    }
-
-    self.save();
-
-    // Register a device
-    self.emit('register', new Device());
-  });
+Driver.prototype.createCommandDevice = function(cmd) {
+	var d = new Device(this._app, cmd);
+	this.emit('register', d);
+	deviceList.push(d);
 };
 
-/**
- * Called when config data is received from the cloud
- * @param  {Object} config Configuration data
- */
-myModule.prototype.config = function(config) {
-
+function Device(app, config) {
+	app.log.info('Creating radioThermostatDriver Device : ' + config.name);
+	var self = this;
+	this._app = app;
+	this.config = config;
+	this.readable = true;
+	this.writeable = config.canSet || false;
+	if (this.writeable) { app.log.info('radioThermostatDriver Device ' + config.name + ' is readable and writable' ); } else app.log.info('radioThermostatDriver Device ' + config.name + ' is readable only' );
+	this.V = config.vendorId || 0;
+	this.D = config.deviceId;
+	this.G = 'rtd' + (config.name).replace(/[^a-zA-Z0-9]/g, '');
+	this.name = 'radioThermostatDriver - ' + config.name;
+	// this.read();
 };
 
-// Export it
-module.exports = myModule;
+function updateDevices(app) {	// runs every "updateInterval" seconds
+	app.log.info("Updating radioThermostatDriver Devices...");
+	app.log.info("radioThermostatDriver executing command: " + tstatCmd);
+	exec(tstatCmd, function(error, stdout, stderr) {
+		app.log.info("Result of radioThermostatDriver command: " + stdout);
+		if (error) {
+			if (error != null) {
+				app.log.warn('radioThermostatDriver : ' + this.name + ' error! - ' + error);
+				return;
+		  };
+		};
+		if (stderr) {
+			if (stderr != null) {
+				app.log.warn('radioThermostatDriver : ' + this.name + ' stderr! - ' + stderr);
+				return;
+			};
+		};
+		var inputString = (stdout + '');
+		var thermostatData = eval ("(" + inputString + ")");
+		if (!thermostatData) {
+			app.log.warn('radioThermostatDriver was unable to parse data recieved. No update was made this cycle.');
+			return;
+		};
+		deviceList.forEach(function(dev){
+			app.log.info('Updating radioThermostatDriver Device: ' + dev.name);
+			var parsedResult = undefined;
+			(dev.config.data || []).forEach(function(fn) {
+				try {
+					parsedResult = fn(thermostatData);
+				} catch(e) {
+					parsedResult = undefined;
+				}
+				app.log.info(dev.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
+			});
+			if (parsedResult !== undefined) {
+				app.log.info(dev.name + ' - emmitting data: ' + parsedResult);
+				dev.emit('data', parsedResult);
+			}
+			else {
+				app.log.info(dev.name + ' - did not emmit data!');
+			};
+		});
+	});
+};
 
+Device.prototype.write = function(dataRcvd) {
+	var app = this._app;
+	app.log.info("radioThermostatDriver Device " + this.name + " received data: " + dataRcvd);
+	app.log.info("radioThermostatDriver Device canSet: " + this.config.canSet);
+	if (this.config.canSet) {
+		var stgSubmit = undefined;
+		(this.config.setStg || []).forEach(function(fn) {
+			try {
+				stgSubmit = fn(ipAddressOfThermostat, dataRcvd);
+			} catch(e) {
+				stgSubmit = undefined;
+			}
+		});
+		app.log.info("radioThermostatDriver string: " + stgSubmit);
 
+		if (stgSubmit !== undefined) {
+			app.log.info(this.name + " - submitting data to thermostat: " + stgSubmit);
+			var rslt = exec(stgSubmit, function (error, stdout, stderr) {
+				stdout.replace(/(\n|\r|\r\n)$/, '');
+				app.log.info(this.name + " - Result: " + stdout);
+				setTimeout( function() { updateDevices(app) }, pauseAfterSetToUpdate);
+			});
+		}
+		else {
+			app.log.info(this.name + ' - error parsing data!');
+		};		
+	}
+	else {
+		app.log.info("radioThermostatDriver Device " + this.name + " received data, but this type of device can't update");
+	}
+}
 
-// old version below
-
-//var Device = require('./lib/device')
-//  , util = require('util')
-//  , stream = require('stream')
-//  , configHandlers = require('./lib/config-handlers');
-
-// Give our driver a stream interface
-//util.inherits(myDriver,stream);
-
-// Our greeting to the user.
-//var HELLO_WORLD_ANNOUNCEMENT = {
-//  "contents": [
-//    { "type": "heading",      "text": "Hello World Driver Loaded" },
-//    { "type": "paragraph",    "text": "The hello world driver has been loaded. You should not see this message again." }
-//  ]
-//};
-
-/**
- * Called when our client starts up
- * @constructor
- *
- * @param  {Object} opts Saved/default driver configuration
- * @param  {Object} app  The app event emitter
- * @param  {String} app.id The client serial number
- *
- * @property  {Function} save When called will save the contents of `opts`
- * @property  {Function} config Will be called when config data is received from the Ninja Platform
- *
- * @fires register - Emit this when you wish to register a device (see Device)
- * @fires config - Emit this when you wish to send config data back to the Ninja Platform
- */
-//function myDriver(opts,app) {
-
-//  var self = this;
-
-//  app.on('client::up',function(){
-
-    // The client is now connected to the Ninja Platform
-
-    // Check if we have sent an announcement before.
-    // If not, send one and save the fact that we have.
-//    if (!opts.hasSentAnnouncement) {
-//      self.emit('announcement',HELLO_WORLD_ANNOUNCEMENT);
-//      opts.hasSentAnnouncement = true;
-//      self.save();
-//    }
-
-    // Register a device
-//    self.emit('register', new Device());
-//  });
-//};
-
-/**
- * Called when a user prompts a configuration.
- * If `rpc` is null, the user is asking for a menu of actions
- * This menu should have rpc_methods attached to them
- *
- * @param  {Object}   rpc     RPC Object
- * @param  {String}   rpc.method The method from the last payload
- * @param  {Object}   rpc.params Any input data the user provided
- * @param  {Function} cb      Used to match up requests.
- */
-//myDriver.prototype.config = function(rpc,cb) {
-
-//  var self = this;
-  // If rpc is null, we should send the user a menu of what he/she
-  // can do.
-  // Otherwise, we will try action the rpc method
-//  if (!rpc) {
-//    return configHandlers.menu.call(this,cb);
-//  }
-//  else if (typeof configHandlers[rpc.method] === "function") {
-//    return configHandlers[rpc.method].call(this,rpc.params,cb);
-//  }
-//  else {
-//    return cb(true);
-//  }
-//};
-
-// Export it
-//module.exports = myDriver;
+module.exports = Driver;
 
