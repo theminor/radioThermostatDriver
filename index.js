@@ -199,7 +199,7 @@ Driver.prototype.config = function(rpc,cb) {
 			self.save();
 			cb(null, {
 				"contents": [
-					{ "type": "paragraph", "text": "Configuration was successful. (TODO: actually update!) radioThermostatDriver values should update shortly!" },
+					{ "type": "paragraph", "text": "Configuration was successful. radioThermostatDriver values should update shortly!" },
 					{ "type": "close"    , "name": "Close" }
 				]
 			});
