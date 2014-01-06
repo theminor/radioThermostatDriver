@@ -130,6 +130,12 @@ Device.prototype.write = function(dataRcvd) {
 	}
 };
 
+var updateInterval = 300000; // update interval in milliseconds (for example, 600000 = 10 minutes)
+var pauseAfterSetToUpdate = 7000; // time in milliseconds to wait after submitting/setting data before we try to run an update
+var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests - this is not currently used...
+var ipAddressOfThermostat = "192.168.1.111"; // ip address of the thermostat
+
+
 Driver.prototype.config = function(rpc,cb) {
 	var self = this;
 	if (!rpc) {
@@ -137,10 +143,10 @@ Driver.prototype.config = function(rpc,cb) {
 		return cb(null, {	// main config window
 			"contents":[
 				{ "type": "paragraph", "text": "The radioThermostatDriver allows you to monitor and control WiFi Thermostats such as the ones from radiothermostat.com. Enter the settings below to get started, and please make sure you get a confirmation message after hitting 'Submit' below. (You may have to click it a couple of times. If you don't get a confirmation message, the settings did not update!)"},
-				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": "", "label": "IP Address of Your Thermostat", "placeholder": "192.168.1.135", "required": true},
-				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": "", "label": "Update Interval in Seconds", "placeholder": "600", "required": true},
-				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": "", "label": "Seconds to Pause Between Thermostat Commands", "placeholder": "5", "required": true},
-				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": "10", "required": true},
+				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": "", "label": "IP Address of Your Thermostat", "placeholder": ipAddressOfThermostat, "required": true},
+				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": "", "label": "Update Interval in Seconds", "placeholder": updateInterval/1000, "required": true},
+				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": "", "label": "Seconds to Pause Between Thermostat Commands", "placeholder": pauseBetweenUpdateCommands, "required": true},
+				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": updateInterval/1000, "required": true},
 				{ "type": "paragraph", "text": " "},
 				{ "type": "submit", "name": "Submit", "rpc_method": "submt" },
 				{ "type": "close", "name": "Cancel" },
