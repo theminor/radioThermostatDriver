@@ -2,24 +2,23 @@ var util = require('util');
 var stream = require('stream');
 var exec = require('child_process').exec;
 var commands = require('./commands');
-var configHandlers = require('./config-handlers');
 
 util.inherits(Driver,stream);
 util.inherits(Device,stream);
 
-// not so elegant way to store all of the devices created by the driver...
+// not so elegant way to store all of the devices created by the driver, plus a few variables...
 var deviceList = [];
-
-// my variables (***TODO: incorporate these into configuration)
 var updateInterval = 300000; // update interval in milliseconds (for example, 600000 = 10 minutes)
 var pauseAfterSetToUpdate = 7000; // time in milliseconds to wait after submitting/setting data before we try to run an update
-var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests
-var ipAddressOfThermostat = "192.168.1.135"; // ip address of the thermostat
-var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
+var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests - this is not currently used...
+var ipAddressOfThermostat = "192.168.1.111"; // ip address of the thermostat
 
 function Driver(opts,app) {
 	this._app = app;
 	this.opts = opts;
+	if (opts.ipadr) ipAddressOfThermostat = opts.ipadr; // ugly way to track these, but it should work for now...
+	if (opts.updtInt) updateInterval = opts.updtInt;
+	if (opts.pauseAftUpdt) pauseAfterSetToUpdate = opts.pauseAftUpdt;
 	app.once('client::up',function(){
 		commands.forEach( this.createCommandDevice.bind(this) );
 		updateDevices(app, opts);
@@ -54,49 +53,48 @@ function Device(app, config) {
 
 function updateDevices(app, opts) {	// runs every "updateInterval" seconds
 	app.log.info("Updating radioThermostatDriver Devices...");
-
-	app.log.info(opts.ipadr); //***
-	
+	var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
 	app.log.info("radioThermostatDriver executing command: " + tstatCmd);
 	exec(tstatCmd, function(error, stdout, stderr) {
 		app.log.info("Result of radioThermostatDriver command: " + stdout);
 		if (error) {
 			if (error != null) {
 				app.log.warn('radioThermostatDriver : ' + this.name + ' error! - ' + error);
-				return;
-		  };
-		};
-		if (stderr) {
+			};
+		}
+		else if (stderr) {
 			if (stderr != null) {
 				app.log.warn('radioThermostatDriver : ' + this.name + ' stderr! - ' + stderr);
-				return;
 			};
-		};
-		var inputString = (stdout + '');
-		var thermostatData = eval ("(" + inputString + ")");
-		if (!thermostatData) {
-			app.log.warn('radioThermostatDriver was unable to parse data recieved. No update was made this cycle.');
-			return;
-		};
-		deviceList.forEach(function(dev){
-			app.log.info('Updating radioThermostatDriver Device: ' + dev.name);
-			var parsedResult = undefined;
-			(dev.config.data || []).forEach(function(fn) {
-				try {
-					parsedResult = fn(thermostatData);
-				} catch(e) {
-					parsedResult = undefined;
-				}
-				app.log.info(dev.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
-			});
-			if (parsedResult !== undefined) {
-				app.log.info(dev.name + ' - emmitting data: ' + parsedResult);
-				dev.emit('data', parsedResult);
+		}
+		else {
+			var inputString = (stdout + '');
+			var thermostatData = eval ("(" + inputString + ")");
+			if (!thermostatData) {
+				app.log.warn('radioThermostatDriver was unable to parse data recieved. No update was made this cycle.');
 			}
 			else {
-				app.log.info(dev.name + ' - did not emmit data!');
+				deviceList.forEach(function(dev){
+					app.log.info('Updating radioThermostatDriver Device: ' + dev.name);
+					var parsedResult = undefined;
+					(dev.config.data || []).forEach(function(fn) {
+						try {
+							parsedResult = fn(thermostatData);
+						} catch(e) {
+							parsedResult = undefined;
+						}
+						app.log.info(dev.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
+					});
+					if (parsedResult !== undefined) {
+						app.log.info(dev.name + ' - emmitting data: ' + parsedResult);
+						dev.emit('data', parsedResult);
+					}
+					else {
+						app.log.info(dev.name + ' - did not emmit data!');
+					};
+				});
 			};
-		});
+		};
 	});
 };
 
@@ -115,7 +113,6 @@ Device.prototype.write = function(dataRcvd) {
 			}
 		});
 		app.log.info("radioThermostatDriver string: " + stgSubmit);
-
 		if (stgSubmit !== undefined) {
 			app.log.info(this.name + " - submitting data to thermostat: " + stgSubmit);
 			var rslt = exec(stgSubmit, function (error, stdout, stderr) {
@@ -196,6 +193,9 @@ Driver.prototype.config = function(rpc,cb) {
             self.opts.updtInt = rpc.params.update_int_secs_text * 1000; // need this in milliseconds
 			self.opts.pauseBtCmds = rpc.params.pause_bt_cmds_secs_text; // this optin isn't used right now...
 			self.opts.pauseAftUpdt = rpc.params.pause_aft_updt_secs_text * 1000; // also need this in milliseconds
+			ipAddressOfThermostat = self.opts.ipadr; // ugly way to track these, but it should work for now...
+			updateInterval = self.opts.ipadr;
+			pauseAfterSetToUpdate = self.opts.ipadr;
 			self.save();
 			cb(null, {
 				"contents": [
