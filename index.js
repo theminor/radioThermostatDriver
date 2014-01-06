@@ -140,7 +140,7 @@ Driver.prototype.config = function(rpc,cb) {
 				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": "", "label": "IP Address of Your Thermostat", "placeholder": ipAddressOfThermostat, "required": true},
 				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": "", "label": "Update Interval in Seconds", "placeholder": updateInterval/1000, "required": true},
 				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": "", "label": "Seconds to Pause Between Thermostat Commands", "placeholder": pauseBetweenUpdateCommands, "required": true},
-				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": updateInterval/1000, "required": true},
+				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": pauseAfterSetToUpdate/1000, "required": true},
 				{ "type": "paragraph", "text": " "},
 				{ "type": "submit", "name": "Submit", "rpc_method": "submt" },
 				{ "type": "close", "name": "Cancel" },
