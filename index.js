@@ -194,8 +194,8 @@ Driver.prototype.config = function(rpc,cb) {
 			self.opts.pauseBtCmds = rpc.params.pause_bt_cmds_secs_text; // this optin isn't used right now...
 			self.opts.pauseAftUpdt = rpc.params.pause_aft_updt_secs_text * 1000; // also need this in milliseconds
 			ipAddressOfThermostat = self.opts.ipadr; // ugly way to track these, but it should work for now...
-			updateInterval = self.opts.ipadr;
-			pauseAfterSetToUpdate = self.opts.ipadr;
+			updateInterval = self.opts.updtInt;
+			pauseAfterSetToUpdate = self.opts.pauseAftUpdt;
 			self.save();
 			cb(null, {
 				"contents": [
