@@ -130,12 +130,6 @@ Device.prototype.write = function(dataRcvd) {
 	}
 };
 
-var updateInterval = 300000; // update interval in milliseconds (for example, 600000 = 10 minutes)
-var pauseAfterSetToUpdate = 7000; // time in milliseconds to wait after submitting/setting data before we try to run an update
-var pauseBetweenUpdateCommands = 5; // time in seconds to wait between submitting/setting the two data requests - this is not currently used...
-var ipAddressOfThermostat = "192.168.1.111"; // ip address of the thermostat
-
-
 Driver.prototype.config = function(rpc,cb) {
 	var self = this;
 	if (!rpc) {
