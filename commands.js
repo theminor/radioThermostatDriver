@@ -59,3 +59,10 @@ module.exports = [
     },  
 ];
 
+/*
+	name: string - the name of the device
+	deviceId: number - the device id of the device - see http://ninjablocks.com/pages/device-ids
+	data: function to call which will return parsed date when given ((json object)thermostatData) as arguments
+	canSet: boolean - set to true if device is writable
+	setStg: a function to call if device is writable upon write which will return a string of the command to execute, given ((string)ipAddr, (string)data) as arguments
+*/
