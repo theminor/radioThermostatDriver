@@ -29,11 +29,11 @@ module.exports = [
         }],
     },
     {
-        name: 'Thermostat Hold Mode',                // current thermostat hold mode ("tmode") - will be one of: 0: disabled, 1: enabled
+        name: 'Thermostat Hold Mode',                // current thermostat hold mode ("hold") - will be one of: 0: disabled, 1: enabled
         deviceId: 244,
         getStg: [function(thermostatData) {
 			var hmModes = ["Thermostat Hold Disabled","Thermostat Hold Enabled"];
-			return hmModes[thermostatData.tmode] || "Thermostat Hold Unknown";
+			return hmModes[thermostatData.hold] || "Thermostat Hold Unknown";
         }],
 		canSet: true,
 		setStg: [function(ipAddr, data, lastData) { // example:   curl -d '{"hold":1}' http://1.1.1.1/tstat  (turns hold on)
