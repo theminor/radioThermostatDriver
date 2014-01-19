@@ -44,7 +44,7 @@ function Device(app, config) {
 	this.config = config;
 	this.readable = true;
 	this.writeable = config.canSet || false;
-	if (this.writeable) { app.log.info('radioThermostatDriver Device ' + config.name + ' is readable and writable' ); } else app.log.info('radioThermostatDriver Device ' + config.name + ' is readable only' );
+	if (this.writeable) { app.log.debug('radioThermostatDriver Device ' + config.name + ' is readable and writable' ); } else app.log.debug('radioThermostatDriver Device ' + config.name + ' is readable only' );
 	this.V = config.vendorId || 0;
 	this.D = config.deviceId;
 	this.G = 'rtd' + (config.name).replace(/[^a-zA-Z0-9]/g, '');
@@ -53,11 +53,11 @@ function Device(app, config) {
 };
 
 function updateDevices(app, opts) {        // runs every "updateInterval" seconds
-	app.log.info("Updating radioThermostatDriver Devices...");
+	app.log.debug("Updating radioThermostatDriver Devices...");
 	var tstatCmd = "curl -s http://" + ipAddressOfThermostat + "/tstat";
-	app.log.info("radioThermostatDriver executing command: " + tstatCmd);
+	app.log.debug("radioThermostatDriver executing command: " + tstatCmd);
 	exec(tstatCmd, function(error, stdout, stderr) {
-		app.log.info("Result of radioThermostatDriver command: " + stdout);
+		app.log.debug("Result of radioThermostatDriver command: " + stdout);
 		if (error) {
 			if (error != null) {
 				app.log.warn('radioThermostatDriver : ' + this.name + ' error! - ' + error);
@@ -77,7 +77,7 @@ function updateDevices(app, opts) {        // runs every "updateInterval" second
 			else {
 				lastData = thermostatData;
 				deviceList.forEach(function(dev){
-					app.log.info('Updating radioThermostatDriver Device: ' + dev.name);
+					app.log.debug('Updating radioThermostatDriver Device: ' + dev.name);
 					var parsedResult = undefined;
 					(dev.config.getStg || []).forEach(function(fn) {
 						try {
@@ -85,14 +85,14 @@ function updateDevices(app, opts) {        // runs every "updateInterval" second
 						} catch(e) {
 							parsedResult = undefined;
 						}
-						app.log.info(dev.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
+						app.log.debug(dev.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
 					});
 					if (parsedResult !== undefined) {
-						app.log.info(dev.name + ' - emmitting data: ' + parsedResult);
+						app.log.debug(dev.name + ' - emmitting data: ' + parsedResult);
 						dev.emit('data', parsedResult);
 					}
 					else {
-						app.log.info(dev.name + ' - did not emmit data!');
+						app.log.debug(dev.name + ' - did not emmit data!');
 					};
 				});
 			};
@@ -103,8 +103,8 @@ function updateDevices(app, opts) {        // runs every "updateInterval" second
 Device.prototype.write = function(dataRcvd) {
 	var app = this._app;
 	var opts = this.opts;
-	app.log.info("radioThermostatDriver Device " + this.name + " received data: " + dataRcvd);
-	app.log.info("radioThermostatDriver Device canSet: " + this.config.canSet);
+	app.log.debug("radioThermostatDriver Device " + this.name + " received data: " + dataRcvd);
+	app.log.debug("radioThermostatDriver Device canSet: " + this.config.canSet);
 	if (this.config.canSet) {
 		var stgSubmit = undefined;
 		(this.config.setStg || []).forEach(function(fn) {
@@ -114,28 +114,28 @@ Device.prototype.write = function(dataRcvd) {
 				stgSubmit = undefined;
 			}
 		});
-		app.log.info("radioThermostatDriver string: " + stgSubmit);
+		app.log.debug("radioThermostatDriver string: " + stgSubmit);
 		if (stgSubmit !== undefined) {
-			app.log.info(this.name + " - submitting data to thermostat: " + stgSubmit);
+			app.log.debug(this.name + " - submitting data to thermostat: " + stgSubmit);
 			var rslt = exec(stgSubmit, function (error, stdout, stderr) {
 				stdout.replace(/(\n|\r|\r\n)$/, '');
-				app.log.info(this.name + " - Result: " + stdout);
+				app.log.debug(this.name + " - Result: " + stdout);
 				setTimeout( function() { updateDevices(app, opts) }, pauseAfterSetToUpdate);
 			});
 		}
 		else {
-			app.log.info(this.name + ' - error parsing data!');
+			app.log.debug(this.name + ' - error parsing data!');
 		};                
 	}
 	else {
-		app.log.info("radioThermostatDriver Device " + this.name + " received data, but this type of device can't update");
+		app.log.debug("radioThermostatDriver Device " + this.name + " received data, but this type of device can't update");
 	}
 };
 
 Driver.prototype.config = function(rpc,cb) {
 	var self = this;
 	if (!rpc) {
-		this._app.log.info("radioThermostatDriver main config window called");
+		this._app.log.debug("radioThermostatDriver main config window called");
 		return cb(null, {        // main config window
 			"contents":[
 				{ "type": "paragraph", "text": "The radioThermostatDriver allows you to monitor and control WiFi Thermostats such as the ones from radiothermostat.com. Enter the settings below to get started, and please make sure you get a confirmation message after hitting 'Submit' below. (You may have to click it a couple of times. If you don't get a confirmation message, the settings did not update!)"},
@@ -150,7 +150,7 @@ Driver.prototype.config = function(rpc,cb) {
 		});
 	};
 	if (rpc.method == "submt") {
-		this._app.log.info("radioThermostatDriver config window submitted. Checking data for errors...");
+		this._app.log.debug("radioThermostatDriver config window submitted. Checking data for errors...");
 		// check for errors
 		var rgx = new RegExp("^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"); // Test ip_addr_text to match this regex - simple ip address checking does not check nodes for > 255, but should suffice for now...
 		if (!rgx.test(rpc.params.ip_addr_text)) {
@@ -190,7 +190,7 @@ Driver.prototype.config = function(rpc,cb) {
 			return;                                
 		}
 		else {        // looks like the submitted values were valid, so update
-			this._app.log.info("radioThermostatDriver data appears valid. Saving settings...");
+			this._app.log.debug("radioThermostatDriver data appears valid. Saving settings...");
 			self.opts.ipadr = rpc.params.ip_addr_text;
 			self.opts.updtInt = rpc.params.update_int_secs_text * 1000; // need this in milliseconds
 			self.opts.pauseBtCmds = rpc.params.pause_bt_cmds_secs_text; // this optin isn't used right now...
@@ -209,7 +209,7 @@ Driver.prototype.config = function(rpc,cb) {
 		};
 	}
 	else {
-		this._app.log.info("radioThermostatDriver - Unknown rpc method was called!");
+		this._app.log.warn("radioThermostatDriver - Unknown rpc method was called!");
 	};
 };
 
