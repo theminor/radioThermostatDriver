@@ -3,7 +3,7 @@ module.exports = [
         name: 'Thermostat Current Temperature',
         deviceId: 9,
         getStg: [function(thermostatData) {
-			return thermostatData.temp;
+			return (thermostatData.temp - 32) * (5 / 9); // result needs to be in Celsius for ninja blocks to handle conversion...
         }],
 		canSet: false,
     },
@@ -13,7 +13,7 @@ module.exports = [
         getStg: [function(thermostatData) {
 			var tTemp = thermostatData.t_cool;
 			if (!tTemp) tTemp = thermostatData.t_heat;
-			return tTemp;
+			return (tTemp - 32) * (5 / 9); // result needs to be in Celsius for ninja blocks to handle conversion...
         }],
 		canSet: true,
 		setStg: [function(ipAddr, data, lastData) { // example:   curl -d '{"t_cool":67,"t_heat":67}' http://1.1.1.1/tstat
