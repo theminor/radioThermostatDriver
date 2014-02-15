@@ -164,14 +164,14 @@ Device.prototype.write = function(dataRcvd) {
 Driver.prototype.config = function(rpc, cb) {
 	var self = this;
 	if (!rpc) {
-		this._app.log.debug("radioThermostatDriver main config window called");
+		self._app.log.debug("radioThermostatDriver main config window called");
 		return cb(null, {        // main config window
 			"contents":[
 				{ "type": "paragraph", "text": "The radioThermostatDriver allows you to monitor and control WiFi Thermostats such as the ones from radiothermostat.com. Enter the settings below to get started, and please make sure you get a confirmation message after hitting 'Submit' below. (You may have to click it a couple of times. If you don't get a confirmation message, the settings did not update!)"},
-				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": "", "label": 'IP Address(es) of Your Thermostat(s) - separate the ip addresses of multiple thermostats with a pipe character ("|")', "placeholder": self.opts.ipadr, "required": true},
-				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": "", "label": "Update Interval in Seconds", "placeholder": self.opts.updtInt/1000, "required": true},
-				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": "", "label": "Seconds to Pause Between Thermostat Commands", "placeholder": self.opts.pauseBtCmds, "required": true},
-				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": "", "label": "Seconds to Pause After a Command Before Updating", "placeholder": self.opts.pauseAftUpdt/1000, "required": true},
+				{ "type": "input_field_text", "field_name": "ip_addr_text", "value": self.opts.ipadr, "label": 'IP Address(es) of Your Thermostat(s) - separate the ip addresses of multiple thermostats with a pipe character ("|")', "placeholder": self.opts.ipadr, "required": true},
+				{ "type": "input_field_text", "field_name": "update_int_secs_text", "value": self.opts.updtInt/1000, "label": "Update Interval in Seconds", "placeholder": self.opts.updtInt/1000, "required": true},
+				{ "type": "input_field_text", "field_name": "pause_bt_cmds_secs_text", "value": self.opts.pauseBtCmds, "label": "Seconds to Pause Between Thermostat Commands", "placeholder": self.opts.pauseBtCmds, "required": true},
+				{ "type": "input_field_text", "field_name": "pause_aft_updt_secs_text", "value": self.opts.pauseAftUpdt/1000, "label": "Seconds to Pause After a Command Before Updating", "placeholder": self.opts.pauseAftUpdt/1000, "required": true},
 				{ "type": "paragraph", "text": " "},
 				{ "type": "submit", "name": "Submit", "rpc_method": "submt" },
 				{ "type": "close", "name": "Cancel" },
@@ -179,20 +179,22 @@ Driver.prototype.config = function(rpc, cb) {
 		});
 	};
 	if (rpc.method == "submt") {
-		this._app.log.debug("radioThermostatDriver config window submitted. Checking data for errors..."); // check for errors
+		self._app.log.debug("radioThermostatDriver config window submitted. Checking data for errors..."); // check for errors
 		var rgx = new RegExp("^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"); // Test ip_addr_text to match this regex - simple ip address checking does not check nodes for > 255, but should suffice for now...
-		rpc.params.ip_addr_text.split("|").forEach(function(ip) {
-			if (!rgx.test(ip.trim())) {
-				cb(null, {
-					"contents": [
-						{ "type": "paragraph", "text": 'IP address was invalid - please use standard ipv4 address, such as: 123.45.6.789. If using multiple ip addresses, selerate each with a pipe charagter ("|"). Do not put and spaces between them. Please try again.' },
-						{ "type": "close"    , "name": "Close" }
-					]
-				});                        
-				return;
-			}
+		var ipsOK = true;	// will set to false if we find one that is invalid
+		rpc.params.ip_addr_text.split("|").forEach(function(ip) {	// test each ip address for match with the regex
+			if (!rgx.test(ip.trim())) { ipsOK = false };
+		});
+		if (!ipsOK) {
+			cb(null, {
+				"contents": [
+					{ "type": "paragraph", "text": 'IP address was invalid - please use standard ipv4 address, such as: 123.45.6.789. If using multiple ip addresses, selerate each with a pipe charagter ("|"). Do not put and spaces between them. Please try again.' },
+					{ "type": "close"    , "name": "Close" }
+				]
+			});                        
+			return;
 		}
-		if (!(rpc.params.update_int_secs_text >= 0)) {        // update_int_secs_text must evaluate to a positive number 
+		else if (!(rpc.params.update_int_secs_text >= 0)) {        // update_int_secs_text must evaluate to a positive number 
 			cb(null, {
 				"contents": [
 					{ "type": "paragraph", "text": "the 'update interval' must be a number and can't be negative. Please try again." },
@@ -220,7 +222,7 @@ Driver.prototype.config = function(rpc, cb) {
 			return;                                
 		}
 		else {        // looks like the submitted values were valid, so update
-			this._app.log.debug("radioThermostatDriver data appears valid. Saving settings...");
+			self._app.log.debug("radioThermostatDriver data appears valid. Saving settings...");
 			self.opts.ipadr = rpc.params.ip_addr_text;
 			self.opts.updtInt = rpc.params.update_int_secs_text * 1000; // need this in milliseconds
 			self.opts.pauseBtCmds = rpc.params.pause_bt_cmds_secs_text; // this optin isn't used right now...
@@ -236,7 +238,7 @@ Driver.prototype.config = function(rpc, cb) {
 		};
 	}
 	else {
-		this._app.log.warn("radioThermostatDriver - Unknown rpc method was called!");
+		self._app.log.warn("radioThermostatDriver - Unknown rpc method was called!");
 	};
 };
 
