@@ -50,10 +50,11 @@ Driver.prototype.updateDevices = function() {
 	var self = this;
 	self._app.log.info("Updating radioThermostatDriver Devices...");
 	for (ip in self.ips) {	// fetch the data once per ip address, then use that data and parse many times as necessary per device
-		if (self.ips[ip]) {	// cover the weird case of an undefined key in the object (perhaps in case one got removed by changing settings, for example)
-			self._app.log.info("radioThermostatDriver connecting to: http://" + ip + "/tstat");
+		var curIp = ip;
+		if (self.ips[curIp]) {	// cover the weird case of an undefined key in the object (perhaps in case one got removed by changing settings, for example)
+			self._app.log.info("radioThermostatDriver connecting to: http://" + curIp + "/tstat");
 			http.get(			// see http://nodejs.org/docs/v0.5.2/api/http.html#http.get
-			{	host: ip,		// example would be "curl -s http://" + ipAddressOfThermostat + "/tstat"
+			{	host: curIp,		// example would be "curl -s http://" + ipAddressOfThermostat + "/tstat"
 				port: 80,
 				path: '/tstat'
 			},
@@ -64,13 +65,15 @@ Driver.prototype.updateDevices = function() {
 				});
 				res.on('end', function () {
 					var inputString = (result + '');
-					self._app.log.info("Result of radioThermostatDriver command: " + inputString);
+					self._app.log.info("Result of radioThermostatDriver command from " + curIp + " : " + inputString);
 					var tstatData = eval ("(" + inputString + ")"); // return data into var tstatData
 					if (!tstatData) {
-						self._app.log.warn('radioThermostatDriver was unable to parse data recieved. No update was made this cycle.');
+						self._app.log.warn('radioThermostatDriver was unable to parse data recieved from ' + curIp + ' - No update was made this cycle.');
 					}
 					else {
-						self.ips[ip].forEach(function(device) {
+						self._app.log.info("Updating devices for ip " + curIp);
+						self.ips[curIp].forEach(function(device) {
+							self._app.log.info("Updating " + device.name);
 							device.lastData = tstatData;
 							var parsedResult = undefined;
 							(device.config.getStg || []).forEach(function(fn) {
@@ -82,7 +85,7 @@ Driver.prototype.updateDevices = function() {
 								self._app.log.info(device.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
 							});
 							if (parsedResult !== undefined) {
-								self._app.log.info(device.name + ' - emmitting data: ' + parsedResult);
+								self._app.log.info(device.name + ' - emitting data: ' + parsedResult);
 								device.emit('data', parsedResult);
 							}
 							else {
