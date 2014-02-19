@@ -48,12 +48,12 @@ Driver.prototype.establishDevices = function() {
 
 Driver.prototype.updateDevices = function() {
 	var self = this;
-	self._app.log.info("Updating radioThermostatDriver Devices...");
+	self._app.log.debug("Updating radioThermostatDriver Devices...");
 	for (ip in self.ips) {			// fetch the data once per ip address, then use that data and parse many times as necessary per device
 		var thisIp = ip;
 		if (this.ips[thisIp]) {
 			(function(curIp) {    	// scope curIp (passed from thisIp below)
-				self._app.log.info("radioThermostatDriver connecting to: http://" + curIp + "/tstat");
+				self._app.log.debug("radioThermostatDriver connecting to: http://" + curIp + "/tstat");
 				http.get(			// see http://nodejs.org/docs/v0.5.2/api/http.html#http.get
 				{	host: curIp,	// example would be "curl -s http://" + ipAddressOfThermostat + "/tstat"
 					port: 80,
@@ -66,15 +66,15 @@ Driver.prototype.updateDevices = function() {
 					});
 					res.on('end', function () {
 						var inputString = (result + '');
-						self._app.log.info("Result of radioThermostatDriver command from " + curIp + " : " + inputString);
+						self._app.log.debug("Result of radioThermostatDriver command from " + curIp + " : " + inputString);
 						var tstatData = eval ("(" + inputString + ")"); // return data into var tstatData
 						if (!tstatData) {
 							self._app.log.warn('radioThermostatDriver was unable to parse data recieved from ' + curIp + ' - No update was made this cycle.');
 						}
 						else {
-							self._app.log.info("Updating devices for ip " + curIp);
+							self._app.log.debug("Updating devices for ip " + curIp);
 							self.ips[curIp].forEach(function(device) {
-								self._app.log.info("Updating " + device.name);
+								self._app.log.debug("Updating " + device.name);
 								device.lastData = tstatData;
 								var parsedResult = undefined;
 								(device.config.getStg || []).forEach(function(fn) {
@@ -83,14 +83,14 @@ Driver.prototype.updateDevices = function() {
 									} catch(e) {
 										parsedResult = undefined;
 									}
-									self._app.log.info(device.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
+									self._app.log.debug(device.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
 								});
 								if (parsedResult !== undefined) {
-									self._app.log.info(device.name + ' - emitting data: ' + parsedResult);
+									self._app.log.debug(device.name + ' - emitting data: ' + parsedResult);
 									device.emit('data', parsedResult);
 								}
 								else {
-									self._app.log.info(device.name + ' - did not emmit data!');
+									self._app.log.debug(device.name + ' - did not emmit data!');
 								};
 							});
 						};
@@ -100,56 +100,6 @@ Driver.prototype.updateDevices = function() {
 				});
 			})(thisIp);
 		};
-		
-		/*
-		if (self.ips[curIp]) {	// cover the weird case of an undefined key in the object (perhaps in case one got removed by changing settings, for example)
-			self._app.log.info("radioThermostatDriver connecting to: http://" + curIp + "/tstat");
-			http.get(			// see http://nodejs.org/docs/v0.5.2/api/http.html#http.get
-			{	host: curIp,		// example would be "curl -s http://" + ipAddressOfThermostat + "/tstat"
-				port: 80,
-				path: '/tstat'
-			},
-			function (res) {
-				var result = '';
-				res.on('data', function (chunk) {
-					result += chunk;
-				});
-				res.on('end', function () {
-					var inputString = (result + '');
-					self._app.log.info("Result of radioThermostatDriver command from " + curIp + " : " + inputString);
-					var tstatData = eval ("(" + inputString + ")"); // return data into var tstatData
-					if (!tstatData) {
-						self._app.log.warn('radioThermostatDriver was unable to parse data recieved from ' + curIp + ' - No update was made this cycle.');
-					}
-					else {
-						self._app.log.info("Updating devices for ip " + curIp);
-						self.ips[curIp].forEach(function(device) {
-							self._app.log.info("Updating " + device.name);
-							device.lastData = tstatData;
-							var parsedResult = undefined;
-							(device.config.getStg || []).forEach(function(fn) {
-								try {
-									parsedResult = fn(tstatData);
-								} catch(e) {
-									parsedResult = undefined;
-								}
-								self._app.log.info(device.name + ' - parse data: ' + inputString + ' --> ' + parsedResult);
-							});
-							if (parsedResult !== undefined) {
-								self._app.log.info(device.name + ' - emitting data: ' + parsedResult);
-								device.emit('data', parsedResult);
-							}
-							else {
-								self._app.log.info(device.name + ' - did not emmit data!');
-							};
-						});
-					};
-				});
-			}).on('error', function(e) {
-				self._app.log.warn('radioThermostatDriver : ' + self.name + ' error! - ' + e.message);
-			});
-		};
-		*/
 	};
 };
 
